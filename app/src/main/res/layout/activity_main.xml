@@ -16,7 +16,6 @@
         android:layout_marginTop="30dp"
         android:gravity="center_horizontal"
         android:padding="10dp"
-        android:text="City Name"
         android:textColor="@color/white"
         android:textSize="18sp" />
 
