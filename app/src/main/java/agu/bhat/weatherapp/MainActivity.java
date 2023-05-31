@@ -71,8 +71,6 @@ public class MainActivity extends AppCompatActivity {
         Location myLocation = getLastLocation();
         lastLocation=getLastLocation();
 
-        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
-        updateLocation();
         createLocationRequest();
         locationCallback = new LocationCallback() {
 
@@ -94,12 +92,7 @@ public class MainActivity extends AppCompatActivity {
         getFeed();
 
 
-        ivSearch.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                updateLocation();
-            }
-        });
+
 
 
     }
@@ -110,32 +103,33 @@ public class MainActivity extends AppCompatActivity {
         Location bestLocation = null;
         for (String provider : providers) {
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_FINE_LOCATION);
+            } else {
+                Location l = locationManager.getLastKnownLocation(provider);
+                if (l == null) {
+                    continue;
+                }
+                bestLocation = l;
             }
-            Location l = locationManager.getLastKnownLocation(provider);
-            if(l==null){
-                continue;
-            }
-            bestLocation=l;
         }
         return bestLocation;
     }
 
-    public void updateLocation(){
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_FINE_LOCATION);
-        } else {
-            fusedLocationProviderClient.getLastLocation().addOnSuccessListener(new OnSuccessListener<Location>() {
-                @Override
-                public void onSuccess(Location location) {
-                    lastLocation=location;
-                        lat=lastLocation.getLatitude();
-                        lon=lastLocation.getLongitude();
-
-                }
-            });
-        }
-    }
+//    public void updateLocation(){
+//        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+//            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_FINE_LOCATION);
+//        } else {
+//            fusedLocationProviderClient.getLastLocation().addOnSuccessListener(new OnSuccessListener<Location>() {
+//                @Override
+//                public void onSuccess(Location location) {
+//                    lastLocation=location;
+//                        lat=lastLocation.getLatitude();
+//                        lon=lastLocation.getLongitude();
+//
+//                }
+//            });
+//        }
+//    }
 
 
     protected void createLocationRequest() {
@@ -215,7 +209,7 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_FINE_LOCATION) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                updateLocation();
+                getLastLocation();
 
             }
         }
