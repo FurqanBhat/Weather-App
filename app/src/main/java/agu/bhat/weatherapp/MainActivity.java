@@ -52,8 +52,10 @@ import org.json.JSONObject;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
+
+
     RequestQueue requestQueue;
-    TextView tvCityName, tvMaxTemp, tvMinTemp, tvTemp;
+    TextView tvCityName, tvMaxTemp, tvMinTemp, tvTemp, tvPrecepProbab, tvPrecepHours;
     ImageView ivIcon, ivSearch;
     EditText etCityName;
     double cityLat=0, cityLon=0;
@@ -73,6 +75,8 @@ public class MainActivity extends AppCompatActivity {
         ivSearch = findViewById(R.id.ivSearch);
         ivIcon = findViewById(R.id.ivIcon);
         etCityName=findViewById(R.id.etCityName);
+        tvPrecepHours=findViewById(R.id.tvPrecepHours);
+        tvPrecepProbab=findViewById(R.id.tvPrecipProbab);
 
 
         requestQueue = Volley.newRequestQueue(this);
@@ -159,9 +163,10 @@ public class MainActivity extends AppCompatActivity {
         else{
             ivIcon.setImageResource(R.drawable.night);
         }
-
+            tvPrecepProbab.setText(precipitationProbability+"%");
+            tvPrecepHours.setText(precipitationHours+" hrs");
+            tvMaxTemp.setText(maxTemp+"°C");
             tvTemp.setText(temp + "°C");
-            tvMaxTemp.setText(maxTemp + "°C");
             tvMinTemp.setText(minTemp + "°C");
         }
 
@@ -181,6 +186,7 @@ public class MainActivity extends AppCompatActivity {
                     JSONObject object= (JSONObject) response.get(0);
                     cityLat=object.getDouble("lat");
                     cityLon=object.getDouble("lon");
+                    getFeed(cityLat, cityLon);
 
                 } catch (JSONException e) {
                     throw new RuntimeException(e);
@@ -195,7 +201,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         requestQueue.add(request);
-        getFeed(cityLat, cityLon);
+
     }
 
 
