@@ -1,18 +1,24 @@
 package agu.bhat.weatherapp;
 
+import static androidx.core.content.PackageManagerCompat.LOG_TAG;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.se.omapi.SEService;
 import android.se.omapi.SEService.OnConnectedListener;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -23,6 +29,7 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.google.android.gms.common.api.ResolvableApiException;
@@ -50,12 +57,10 @@ public class MainActivity extends AppCompatActivity {
     TextView tvCityName, tvMaxTemp, tvMinTemp, tvTemp;
     ImageView ivIcon, ivSearch;
     EditText etCityName;
-    double lat = 0.0, lon = 0.0;
-    private FusedLocationProviderClient fusedLocationProviderClient;
-    Location lastLocation;
-    LocationRequest locationRequest;
-    LocationCallback locationCallback;
-    LocationManager locationManager;
+    double cityLat=0, cityLon=0;
+
+
+
 
 
     @Override
@@ -68,91 +73,41 @@ public class MainActivity extends AppCompatActivity {
         tvTemp = findViewById(R.id.tvTemp);
         ivSearch = findViewById(R.id.ivSearch);
         ivIcon = findViewById(R.id.ivIcon);
-        Location myLocation = getLastLocation();
-        lastLocation=getLastLocation();
-
-        createLocationRequest();
-        locationCallback = new LocationCallback() {
-
-            @Override
-            public void onLocationResult(@NonNull LocationResult locationResult) {
-
-                lastLocation = locationResult.getLastLocation();
-
-
-                lat = lastLocation.getLatitude();
-                lon = lastLocation.getLongitude();
-                getFeed();
-
-            }
-        };
+        etCityName=findViewById(R.id.etCityName);
 
 
         requestQueue = Volley.newRequestQueue(this);
-        getFeed();
 
-
-
-
-
-    }
-
-    private Location getLastLocation() {
-        locationManager = (LocationManager) MainActivity.this.getSystemService(LOCATION_SERVICE);
-        List<String> providers = locationManager.getProviders(true);
-        Location bestLocation = null;
-        for (String provider : providers) {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_FINE_LOCATION);
-            } else {
-                Location l = locationManager.getLastKnownLocation(provider);
-                if (l == null) {
-                    continue;
-                }
-                bestLocation = l;
+        ivSearch.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String city=etCityName.getText().toString().trim();
+                getCityLocation(city);
             }
-        }
-        return bestLocation;
-    }
-
-//    public void updateLocation(){
-//        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-//            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_FINE_LOCATION);
-//        } else {
-//            fusedLocationProviderClient.getLastLocation().addOnSuccessListener(new OnSuccessListener<Location>() {
-//                @Override
-//                public void onSuccess(Location location) {
-//                    lastLocation=location;
-//                        lat=lastLocation.getLatitude();
-//                        lon=lastLocation.getLongitude();
-//
-//                }
-//            });
-//        }
-//    }
-
-
-    protected void createLocationRequest() {
-        locationRequest=new LocationRequest();
-        locationRequest.setInterval(3*1000);
-        locationRequest.setFastestInterval(2*1000);
-        locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+        });
 
     }
 
-    public void getFeed(){
-        if(lastLocation!=null) {
-            lat = lastLocation.getLatitude();
-            lon = lastLocation.getLongitude();
-        }
-        String url="https://api.openweathermap.org/data/2.5/weather?lat="+lat+"&lon="+lon+"&appid=44954eeb8e6637b185893220202e5570";
+
+
+
+
+
+
+
+
+
+
+
+
+    public void getFeed(double lat, double lon){
+        String url="https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+"&hourly=temperature_2m,cloudcover,is_day&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=1&timezone=auto";
+
+
         JsonObjectRequest request=new JsonObjectRequest(Request.Method.GET,url, null, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
-                if(lastLocation!=null) {
                     setUiValues(response);
-                }
-
             }
         }, new Response.ErrorListener() {
             @Override
@@ -164,24 +119,29 @@ public class MainActivity extends AppCompatActivity {
         requestQueue.add(request);
     }
 
+
+
+
+
+
     protected void setUiValues(JSONObject response){
-        JSONObject mainObject, cloudObject;
-        String cityName;
+        JSONObject hourly, daily;
         double maxTemp=0.0, minTemp=0.0, temp=0.0;
         int cloudy=0;
 
         try {
-            mainObject=response.getJSONObject("main");
-            cloudObject=response.getJSONObject("clouds");
+            hourly=response.getJSONObject("hourly");
+            daily=response.getJSONObject("daily");
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
         try {
-            temp=mainObject.getDouble("temp");
-            minTemp=mainObject.getDouble("temp_min");
-            maxTemp=mainObject.getDouble("temp_max");
-            cloudy=cloudObject.getInt("all");
-            cityName=response.getString("name");
+            JSONArray temperature=hourly.getJSONArray("temperature_2m");
+            temp= (double) temperature.get(0);
+            JSONArray cloudcover=hourly.getJSONArray("cloudcover");
+            minTemp= (double) daily.getJSONArray("temperature_2m_min").getDouble(0);
+            maxTemp= (double) daily.getJSONArray("temperature_2m_max").getDouble(0);
+            cloudy= (int) cloudcover.get(0);
 
         } catch (JSONException e) {
             throw new RuntimeException(e);
@@ -197,30 +157,44 @@ public class MainActivity extends AppCompatActivity {
             ivIcon.setImageResource(R.drawable.sunny);
         }
 
-            tvCityName.setText(cityName);
-            tvTemp.setText(temp + "");
-            tvMaxTemp.setText(maxTemp + "");
-            tvMinTemp.setText(minTemp + "");
+            tvTemp.setText(temp + "°C");
+            tvMaxTemp.setText(maxTemp + "°C");
+            tvMinTemp.setText(minTemp + "°C");
         }
 
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_FINE_LOCATION) {
-            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                getLastLocation();
+
+
+
+
+    private void getCityLocation(String name){
+        tvCityName.setText(name.toUpperCase());
+        String url="https://api.openweathermap.org/geo/1.0/direct?q="+name+"&limit=1&appid=44954eeb8e6637b185893220202e5570";
+        JsonArrayRequest request=new JsonArrayRequest(Request.Method.GET, url, null, new Response.Listener<JSONArray>() {
+
+            public void onResponse(JSONArray response) {
+
+                try {
+                    JSONObject object= (JSONObject) response.get(0);
+                    cityLat=object.getDouble("lat");
+                    cityLon=object.getDouble("lon");
+
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+
 
             }
-        }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Toast.makeText(MainActivity.this, "ERROR OCCURED IN GETCITYLOCATION", Toast.LENGTH_SHORT).show();
+            }
+        });
+        requestQueue.add(request);
+        getFeed(cityLat, cityLon);
     }
 
 
-
-//    private boolean locationPermissions(){
-//        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)==
-//                PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)==
-//                PackageManager.PERMISSION_GRANTED;
-//    }
 
 }
