@@ -52,7 +52,6 @@ import org.json.JSONObject;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-    private static final int REQUEST_FINE_LOCATION = 9;
     RequestQueue requestQueue;
     TextView tvCityName, tvMaxTemp, tvMinTemp, tvTemp;
     ImageView ivIcon, ivSearch;
@@ -101,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     public void getFeed(double lat, double lon){
-        String url="https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+"&hourly=temperature_2m,cloudcover,is_day&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=1&timezone=auto";
+        String url="https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+"&hourly=temperature_2m,cloudcover,visibility,is_day&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_hours,precipitation_probability_max&forecast_days=1&timezone=auto";
 
 
         JsonObjectRequest request=new JsonObjectRequest(Request.Method.GET,url, null, new Response.Listener<JSONObject>() {
@@ -126,8 +125,8 @@ public class MainActivity extends AppCompatActivity {
 
     protected void setUiValues(JSONObject response){
         JSONObject hourly, daily;
-        double maxTemp=0.0, minTemp=0.0, temp=0.0;
-        int cloudy=0;
+        double maxTemp=0.0, minTemp=0.0, temp=0.0, precipitationHours=0.0;
+        int cloudy=0, isDay=0, precipitationProbability=0;
 
         try {
             hourly=response.getJSONObject("hourly");
@@ -136,25 +135,29 @@ public class MainActivity extends AppCompatActivity {
             throw new RuntimeException(e);
         }
         try {
-            JSONArray temperature=hourly.getJSONArray("temperature_2m");
-            temp= (double) temperature.get(0);
-            JSONArray cloudcover=hourly.getJSONArray("cloudcover");
+            temp=hourly.getJSONArray("temperature_2m").getDouble(0);
+            isDay=hourly.getJSONArray("is_day").getInt(0);
+            cloudy=hourly.getJSONArray("cloudcover").getInt(0);
             minTemp= (double) daily.getJSONArray("temperature_2m_min").getDouble(0);
             maxTemp= (double) daily.getJSONArray("temperature_2m_max").getDouble(0);
-            cloudy= (int) cloudcover.get(0);
+            precipitationHours=daily.getJSONArray("precipitation_hours").getDouble(0);
+            precipitationProbability=daily.getJSONArray("precipitation_probability_max").getInt(0);
 
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
 
-        if(cloudy>30 && cloudy<70){
-            ivIcon.setImageResource(R.drawable.cloudy);
+        if(cloudy>30 && cloudy<70 && isDay==1){
+            ivIcon.setImageResource(R.drawable.halfcloudy);
         }
         else if(cloudy>70){
-            ivIcon.setImageResource(R.drawable.raining);
+            ivIcon.setImageResource(R.drawable.fullcloudy);
+        }
+        else if(cloudy<30 && isDay==1){
+            ivIcon.setImageResource(R.drawable.sunny);
         }
         else{
-            ivIcon.setImageResource(R.drawable.sunny);
+            ivIcon.setImageResource(R.drawable.night);
         }
 
             tvTemp.setText(temp + "°C");
