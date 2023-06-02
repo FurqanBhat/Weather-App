@@ -12,6 +12,8 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
@@ -53,15 +55,14 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
-
+    private static final int REQUEST_CODE_FINE_LOCATION = 987;
+    FusedLocationProviderClient fusedLocationProviderClient;
+    String cityNameFromLocation;
     RequestQueue requestQueue;
     TextView tvCityName, tvMaxTemp, tvMinTemp, tvTemp, tvPrecepProbab, tvPrecepHours;
     ImageView ivIcon, ivSearch;
     EditText etCityName;
-    double cityLat=0, cityLon=0;
-
-
-
+    double cityLat = 0, cityLon = 0;
 
 
     @Override
@@ -74,9 +75,10 @@ public class MainActivity extends AppCompatActivity {
         tvTemp = findViewById(R.id.tvTemp);
         ivSearch = findViewById(R.id.ivSearch);
         ivIcon = findViewById(R.id.ivIcon);
-        etCityName=findViewById(R.id.etCityName);
-        tvPrecepHours=findViewById(R.id.tvPrecepHours);
-        tvPrecepProbab=findViewById(R.id.tvPrecipProbab);
+        etCityName = findViewById(R.id.etCityName);
+        tvPrecepHours = findViewById(R.id.tvPrecepHours);
+        tvPrecepProbab = findViewById(R.id.tvPrecipProbab);
+        getCurrLocation();
 
 
         requestQueue = Volley.newRequestQueue(this);
@@ -84,29 +86,43 @@ public class MainActivity extends AppCompatActivity {
         ivSearch.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String city=etCityName.getText().toString().trim();
+                String city = etCityName.getText().toString().trim();
                 getCityLocation(city);
             }
         });
 
     }
 
+    private void getCurrLocation() {
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+           ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.ACCESS_FINE_LOCATION},REQUEST_CODE_FINE_LOCATION);
+        }
+        fusedLocationProviderClient.getLastLocation().addOnSuccessListener(this, new OnSuccessListener<Location>() {
+            @Override
+            public void onSuccess(Location location) {
+                if (location != null) {
+                    getFeed(location.getLatitude(),location.getLongitude());
+                    try {
+                        Geocoder geocoder = new Geocoder(getApplicationContext());
+                        List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
+                        Address address= addresses.get(0);
+                        String c=address.getAddressLine(0);
+                        tvCityName.setText(c);
+                    }
+                    catch (Exception e){
+                        Toast.makeText(MainActivity.this, "Error occured in GEOCODER", Toast.LENGTH_SHORT).show();
+                    }
 
 
-
-
-
-
-
-
-
-
+                }
+            }
+        });
+    }
 
 
     public void getFeed(double lat, double lon){
         String url="https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+"&hourly=temperature_2m,cloudcover,visibility,is_day&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_hours,precipitation_probability_max&forecast_days=1&timezone=auto";
-
-
         JsonObjectRequest request=new JsonObjectRequest(Request.Method.GET,url, null, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
@@ -157,10 +173,10 @@ public class MainActivity extends AppCompatActivity {
         else if(cloudy>70){
             ivIcon.setImageResource(R.drawable.fullcloudy);
         }
-        else if(cloudy<30 && isDay==1){
+        else if(cloudy<30 && isDay==0){
             ivIcon.setImageResource(R.drawable.sunny);
         }
-        else{
+        else {
             ivIcon.setImageResource(R.drawable.night);
         }
             tvPrecepProbab.setText(precipitationProbability+"%");
@@ -204,6 +220,13 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-
-
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            getCurrLocation();
+        } else {
+            return;
+        }
+    }
 }
