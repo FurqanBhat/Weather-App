@@ -1,26 +1,16 @@
 package agu.bhat.weatherapp;
 
-import static androidx.core.content.PackageManagerCompat.LOG_TAG;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import android.Manifest;
-import android.content.Intent;
-import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
-import android.location.LocationManager;
 import android.os.Bundle;
-import android.os.Handler;
-import android.se.omapi.SEService;
-import android.se.omapi.SEService.OnConnectedListener;
-import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -34,18 +24,9 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
-import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.LocationSettingsRequest;
-import com.google.android.gms.location.LocationSettingsResponse;
-import com.google.android.gms.location.SettingsClient;
-import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -57,7 +38,6 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_CODE_FINE_LOCATION = 987;
     FusedLocationProviderClient fusedLocationProviderClient;
-    String cityNameFromLocation;
     RequestQueue requestQueue;
     TextView tvCityName, tvMaxTemp, tvMinTemp, tvTemp, tvPrecepProbab, tvPrecepHours;
     ImageView ivIcon, ivSearch;
@@ -167,7 +147,7 @@ public class MainActivity extends AppCompatActivity {
             throw new RuntimeException(e);
         }
 
-        if(cloudy>30 && cloudy<70 && isDay==1){
+        if(cloudy>=30 && cloudy<=70 && isDay==1){
             ivIcon.setImageResource(R.drawable.halfcloudy);
         }
         else if(cloudy>70){
